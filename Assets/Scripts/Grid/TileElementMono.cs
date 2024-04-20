@@ -6,6 +6,8 @@ namespace Match3BaseMechanic.Grid
 {
     public class TileElementMono : MonoBehaviour, IPoolElement
     {
+        private const float SWIPE_THRESHOLD = 0.1f;
+        
         public event Action<TileElementMono> OnTileClick;
         public event Action<TileElementMono, Vector3> OnTileSwap;
         public int PositionX { get; private set; }
@@ -45,14 +47,15 @@ namespace Match3BaseMechanic.Grid
         private void OnMouseUp() 
         {
             var finalPosition = _mainCamera.ScreenToWorldPoint(Input.mousePosition);
+            var direction = finalPosition - _initialPosition;
 
-            if (finalPosition == _initialPosition)
+            if (direction.magnitude < SWIPE_THRESHOLD)
             {
                 OnTileClick?.Invoke(this);
             }
             else
             {
-                var direction = finalPosition - _initialPosition;
+                direction.Normalize();
                 OnTileSwap?.Invoke(this, direction);
             }
         }

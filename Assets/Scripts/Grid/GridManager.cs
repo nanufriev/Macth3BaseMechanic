@@ -63,6 +63,8 @@ namespace Match3BaseMechanic.Grid
                 var newTile = await _tileElementPool.GetElementFromPool();
                 newTile.transform.position = new Vector2(x, y);
                 newTile.Init(x, y, GetRandomColor(), _mainCamera);
+                newTile.OnTileClick += SelectTile;
+                newTile.OnTileSwap += SwipeTile;
                 newTile.transform.parent = _tileGridParent;
                 newTile.gameObject.SetActive(true);
                 _tiles[x, y] = newTile;
@@ -82,7 +84,19 @@ namespace Match3BaseMechanic.Grid
             }
         }
 
-        public void SwapTiles(TileElementMono tile1, TileElementMono tile2)
+        private void SwipeTile(TileElementMono tile, Vector3 direction)
+        {
+            var targetX = tile.PositionX + (int)direction.x;
+            var targetY = tile.PositionY + (int)direction.y;
+            if (targetX >= 0 && targetX < _config.GridWidth && targetY >= 0 && targetY < _config.GridHeight)
+            {
+                var targetTile = _tiles[targetX, targetY];
+                if (targetTile != null)
+                    SwapTiles(tile, targetTile);
+            }
+        }
+        
+        private void SwapTiles(TileElementMono tile1, TileElementMono tile2)
         {
             if (Mathf.Abs(tile1.PositionX - tile2.PositionX) + Mathf.Abs(tile1.PositionY - tile2.PositionY) == 1)
             {

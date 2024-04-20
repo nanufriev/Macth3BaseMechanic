@@ -7,7 +7,7 @@ namespace Match3BaseMechanic.Helpers
 {
     public static class SpawnHelper
     {
-        ///TODO Use addressables system for better performance, more suitable async operations
+        //TODO Use addressables system for better performance, more suitable async operations
         //TODO Also for for real game we have to load resources of object too
         //TODO I'm convinced that using addressables for this test task is overhead
         public static async UniTask<T> SpawnElement<T>(T prefab, Transform parent) where T : Object

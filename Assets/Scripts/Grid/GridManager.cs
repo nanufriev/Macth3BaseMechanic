@@ -79,10 +79,10 @@ namespace Match3BaseMechanic.Grid
             if (_isBoardProcessing)
                 return;
 
-            if (_selectedTile == null)
+            if (_selectedTile == null || _selectedTile.Equals(tile))
                 _selectedTile = tile;
             else
-                SwapTiles(_selectedTile, tile).ContinueWith(() => _selectedTile = null).Forget();
+                SwapTiles(_selectedTile, tile).Forget();
         }
 
         private void SwipeTile(TileElementMono tile, Vector3 direction)
@@ -126,13 +126,10 @@ namespace Match3BaseMechanic.Grid
                         SwapTilePositions(tile1, tile2);
                     }
                 }
-                else
-                {
-                    _selectedTile = null;
-                }
             }
             finally
             {
+                _selectedTile = null;
                 _isBoardProcessing = false;
             }
         }

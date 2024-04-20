@@ -1,6 +1,6 @@
-using Match3BaseMechanic.Pooling;
+using Core.Pooling;
 
-namespace Match3BaseMechanic.Grid
+namespace Core.Grid
 {
     public class TileElementPoolManager : PoolManagerBase<TileElementMono>
     {

@@ -1,8 +1,8 @@
 using System;
-using Match3BaseMechanic.Pooling;
+using Core.Pooling;
 using UnityEngine;
 
-namespace Match3BaseMechanic.Grid
+namespace Core.Grid
 {
     public class TileElementMono : MonoBehaviour, IPoolElement
     {

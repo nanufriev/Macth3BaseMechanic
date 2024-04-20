@@ -1,9 +1,9 @@
 using System.Collections.Generic;
+using Core.Helpers;
 using Cysharp.Threading.Tasks;
-using Match3BaseMechanic.Helpers;
 using UnityEngine;
 
-namespace Match3BaseMechanic.Pooling
+namespace Core.Pooling
 {
     public abstract class PoolManagerBase<T> where T : MonoBehaviour, IPoolElement
     {

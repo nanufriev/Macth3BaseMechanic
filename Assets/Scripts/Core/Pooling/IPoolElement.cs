@@ -1,6 +1,6 @@
 using System;
 
-namespace Match3BaseMechanic.Pooling
+namespace Core.Pooling
 {
     public interface IPoolElement : IDisposable
     {

@@ -3,7 +3,7 @@ using Cysharp.Threading.Tasks;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace Match3BaseMechanic.Helpers
+namespace Core.Helpers
 {
     public static class SpawnHelper
     {

@@ -1,11 +1,11 @@
 using System.Collections.Generic;
-using System.Linq;
+using Core.Helpers;
+using Core.Settings;
 using Cysharp.Threading.Tasks;
-using Match3BaseMechanic.Helpers;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-namespace Match3BaseMechanic.Grid
+namespace Core.Grid
 {
     public class GridManager
     {

@@ -1,7 +1,8 @@
 using System;
+using Core.CameraManagement;
+using Core.Grid;
+using Core.Settings;
 using Cysharp.Threading.Tasks;
-using Match3BaseMechanic.CameraSystem;
-using Match3BaseMechanic.Grid;
 using UnityEngine;
 
 public class GameController : MonoBehaviour

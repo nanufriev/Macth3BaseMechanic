@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Match3BaseMechanic.CameraSystem
+namespace Core.CameraManagement
 {
     public class CameraManager
     {

@@ -41,6 +41,7 @@ namespace Match3BaseMechanic.Pooling
         public void ReturnToPool(T element)
         {
             element.gameObject.SetActive(false);
+            element.Dispose();
             _poolElements.Enqueue(element);
         }
     }

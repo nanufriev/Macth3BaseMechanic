@@ -10,8 +10,8 @@ namespace Match3BaseMechanic.Grid
         
         public event Action<TileElementMono> OnTileClick;
         public event Action<TileElementMono, Vector3> OnTileSwap;
-        public int PositionX { get; private set; }
-        public int PositionY { get; private set; }
+        public int PositionX { get; private set; } = -1;
+        public int PositionY { get; private set; } = -1;
         public Color Color { get; private set; }
 
         private SpriteRenderer _spriteRenderer;
@@ -58,6 +58,27 @@ namespace Match3BaseMechanic.Grid
                 direction.Normalize();
                 OnTileSwap?.Invoke(this, direction);
             }
+        }
+
+        public void Dispose()
+        {
+            PositionX = -1;
+            PositionY = -1;
+        }
+        
+        public bool Equals(TileElementMono other)
+        {
+            return PositionX == other.PositionX && PositionY == other.PositionY;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is TileElementMono other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(PositionX, PositionY);
         }
     }
 }

@@ -20,8 +20,9 @@ namespace Match3BaseMechanic.Grid
 
         private TileElementMono[,] _tiles;
         private TileElementMono _selectedTile;
-        private List<TileElementMono> _matchedTiles;
-        private HashSet<int> _columnsToUpdate;
+        private HashSet<TileElementMono> _matchedTiles;
+        private SortedSet<int> _columnsToUpdate;
+        private SortedSet<int> _rowsToUpdate;
         private bool _isBoardProcessing;
 
         public GridManager(
@@ -41,8 +42,9 @@ namespace Match3BaseMechanic.Grid
             _baseGridElement = baseGridElement;
             _mainCamera = mainCamera;
             _tileElementPool = new TileElementPoolManager();
-            _matchedTiles = new List<TileElementMono>();
-            _columnsToUpdate = new HashSet<int>();
+            _matchedTiles = new HashSet<TileElementMono>();
+            _columnsToUpdate = new SortedSet<int>();
+            _rowsToUpdate = new SortedSet<int>();
         }
 
         public async UniTask Init()
@@ -113,11 +115,11 @@ namespace Match3BaseMechanic.Grid
 
                     if (_matchedTiles.Count > 0)
                     {
-                        _matchedTiles = _matchedTiles.Distinct().ToList();
                         HandleMatches();
                         await RefillBoard();
                         _matchedTiles.Clear();
                         _columnsToUpdate.Clear();
+                        _rowsToUpdate.Clear();
                     }
                     else
                     {
@@ -139,8 +141,8 @@ namespace Match3BaseMechanic.Grid
         {
             foreach (var matchedTile in _matchedTiles)
             {
-                RemoveTile(matchedTile);
                 _tiles[matchedTile.PositionX, matchedTile.PositionY] = null;
+                RemoveTile(matchedTile);
             }
         }
 
@@ -152,14 +154,9 @@ namespace Match3BaseMechanic.Grid
 
         private void TilesFall()
         {
-            foreach (var tile in _matchedTiles)
+            for (var y = _rowsToUpdate.Min; y < _config.GridHeight; y++)
             {
-                _columnsToUpdate.Add(tile.PositionX);
-            }
-
-            foreach (var x in _columnsToUpdate)
-            {
-                for (var y = 0; y < _config.GridHeight; y++)
+                foreach (var x in _columnsToUpdate)
                 {
                     if (_tiles[x, y] == null)
                     {
@@ -183,21 +180,14 @@ namespace Match3BaseMechanic.Grid
         {
             var spawningTasks = new List<UniTask>();
 
-            foreach (var x in _columnsToUpdate)
+            for (var y = _rowsToUpdate.Min; y < _config.GridHeight; y++)
             {
-                var emptyCount = 0;
-                for (var y = 0; y < _config.GridHeight; y++)
+                foreach (var x in _columnsToUpdate)
                 {
                     if (_tiles[x, y] == null)
                     {
-                        emptyCount++;
+                        spawningTasks.Add(SpawnTile(x, y));
                     }
-                }
-
-                for (var i = 0; i < emptyCount; i++)
-                {
-                    var spawnY = _config.GridHeight - emptyCount + i;
-                    spawningTasks.Add(SpawnTile(x, spawnY));
                 }
             }
 
@@ -217,22 +207,32 @@ namespace Match3BaseMechanic.Grid
             tile2.SetNewPositionIndex(tempX, tempY);
         }
 
-        private bool CheckAndCollectMatches(TileElementMono tile)
+        private void CheckAndCollectMatches(TileElementMono tile)
         {
-            CheckLineMatch(tile, Vector2.right);
-            CheckLineMatch(tile, Vector2.left);
-            CheckLineMatch(tile, Vector2.up);
-            CheckLineMatch(tile, Vector2.down);
-
-            return _matchedTiles.Count > 0;
+            CheckLineMatch(tile, Vector2.right, Vector2.left);
+            CheckLineMatch(tile, Vector2.up, Vector2.down);
         }
 
-
-        private void CheckLineMatch(TileElementMono startTile, Vector2 direction)
+        private void CheckLineMatch(TileElementMono tile, Vector2 firstDirection, Vector2 secondDirection)
         {
-            var lineMatches = new List<TileElementMono> { startTile };
+            var lineMatches = new List<TileElementMono> { tile };
             var consecutiveCount = 1;
 
+            CheckDirectionLineMatch(tile, firstDirection, ref lineMatches, ref consecutiveCount);
+            CheckDirectionLineMatch(tile, secondDirection, ref lineMatches, ref consecutiveCount);
+
+            if (consecutiveCount >= 3)
+                foreach (var tileInLine in lineMatches)
+                {
+                    _matchedTiles.Add(tileInLine);
+                    _columnsToUpdate.Add(tileInLine.PositionX);
+                    _rowsToUpdate.Add(tileInLine.PositionY);
+                }
+        }
+
+        private void CheckDirectionLineMatch(TileElementMono startTile, Vector2 direction,
+            ref List<TileElementMono> lineMatches, ref int consecutiveCount)
+        {
             var currentTile = startTile;
             var nextX = startTile.PositionX + (int)direction.x;
             var nextY = startTile.PositionY + (int)direction.y;
@@ -252,9 +252,6 @@ namespace Match3BaseMechanic.Grid
                     break;
                 }
             }
-
-            if (consecutiveCount >= 3)
-                _matchedTiles.AddRange(lineMatches);
         }
 
         private async UniTask<TileElementMono> SpawnTile(int x, int y)

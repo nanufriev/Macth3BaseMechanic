@@ -16,21 +16,18 @@ namespace Match3BaseMechanic.Grid
         private Camera _mainCamera;
         private Vector3 _initialPosition;
 
-        public void Init(int x, int y, Color color) 
+        public void Init(int x, int y, Color color, Camera mainCamera) 
         {
             PositionX = x;
             PositionY = y;
             Color = color;
-
+            _mainCamera = mainCamera;
             _spriteRenderer = GetComponent<SpriteRenderer>();
+            
             if (_spriteRenderer == null)
                 throw new Exception("Tile element doesn't have SpriteRenderer component!");
 
             _spriteRenderer.color = Color;
-            
-            _mainCamera = Camera.main;
-            if (_mainCamera == null)
-                throw new Exception("Couldn't find main camera!");
         }
 
         public void SetNewPositionIndex(int x, int y)

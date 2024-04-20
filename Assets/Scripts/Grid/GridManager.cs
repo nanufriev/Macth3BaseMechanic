@@ -6,13 +6,14 @@ namespace Match3BaseMechanic.Grid
 {
     public class GridManager
     {
-        private GameConfig _config;
-        private Transform _tileGridParent;
-        private TileElementMono _tileElementMonoPrefab;
-        private Transform _tilePoolParent;
-        private TileElementPoolManager _tileElementPool;
-        private GameObject _baseGridElement;
-        private Transform _baseGridParent;
+        private readonly GameConfig _config;
+        private readonly Transform _tileGridParent;
+        private readonly TileElementMono _tileElementMonoPrefab;
+        private readonly Transform _tilePoolParent;
+        private readonly TileElementPoolManager _tileElementPool;
+        private readonly GameObject _baseGridElement;
+        private readonly Transform _baseGridParent;
+        private readonly Camera _mainCamera;
         
         private TileElementMono[,] _tiles;
         private TileElementMono _selectedTile;
@@ -23,7 +24,8 @@ namespace Match3BaseMechanic.Grid
             Transform tilePoolParent, 
             Transform tileGridParent,
             Transform baseGridParent,
-            GameObject baseGridElement)
+            GameObject baseGridElement,
+            Camera mainCamera)
         {
             _config = config;
             _tileElementMonoPrefab = tileElementMonoPrefab;
@@ -31,7 +33,7 @@ namespace Match3BaseMechanic.Grid
             _tileGridParent = tileGridParent;
             _baseGridParent = baseGridParent;
             _baseGridElement = baseGridElement;
-            
+            _mainCamera = mainCamera;
             _tileElementPool = new TileElementPoolManager();
         }
 
@@ -60,7 +62,7 @@ namespace Match3BaseMechanic.Grid
             {
                 var newTile = await _tileElementPool.GetElementFromPool();
                 newTile.transform.position = new Vector2(x, y);
-                newTile.Init(x, y, GetRandomColor());
+                newTile.Init(x, y, GetRandomColor(), _mainCamera);
                 newTile.transform.parent = _tileGridParent;
                 newTile.gameObject.SetActive(true);
                 _tiles[x, y] = newTile;

@@ -1,4 +1,6 @@
+using System;
 using Cysharp.Threading.Tasks;
+using Match3BaseMechanic.CameraSystem;
 using Match3BaseMechanic.Grid;
 using UnityEngine;
 
@@ -25,12 +27,22 @@ public class GameController : MonoBehaviour
     private GameObject _baseGridElement;
 
     private GridManager _gridManager;
+    private CameraManager _cameraManager;
+    private Camera _mainCamera;
     
     private async UniTaskVoid Start()
     {
+        _mainCamera = Camera.main;
+        
+        if (_mainCamera == null)
+            throw new Exception("Couldn't find main camera!");
+
+        _cameraManager = new CameraManager(_mainCamera);
         _gridManager = new GridManager(_config, _tileElementMonoPrefab, _tilePoolParent, 
-            _tileGridParent, _baseGridParent, _baseGridElement);
+            _tileGridParent, _baseGridParent, _baseGridElement, _mainCamera);
         
         await _gridManager.Init();
+        _cameraManager.AdjustCameraToGrid(_config.GridWidth, _config.GridHeight);
+        
     }
 }

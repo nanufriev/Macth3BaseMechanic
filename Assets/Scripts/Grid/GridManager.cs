@@ -108,7 +108,10 @@ namespace Match3BaseMechanic.Grid
                 {
                     SwapTilePositions(tile1, tile2);
 
-                    if (CheckMatches(tile1) || CheckMatches(tile2))
+                    CheckAndCollectMatches(tile1);
+                    CheckAndCollectMatches(tile2);
+
+                    if (_matchedTiles.Count > 0)
                     {
                         _matchedTiles = _matchedTiles.Distinct().ToList();
                         HandleMatches();
@@ -129,7 +132,7 @@ namespace Match3BaseMechanic.Grid
             finally
             {
                 _isBoardProcessing = false;
-            } 
+            }
         }
 
         private void HandleMatches()
@@ -214,7 +217,7 @@ namespace Match3BaseMechanic.Grid
             tile2.SetNewPositionIndex(tempX, tempY);
         }
 
-        private bool CheckMatches(TileElementMono tile)
+        private bool CheckAndCollectMatches(TileElementMono tile)
         {
             CheckLineMatch(tile, Vector2.right);
             CheckLineMatch(tile, Vector2.left);
@@ -254,7 +257,7 @@ namespace Match3BaseMechanic.Grid
                 _matchedTiles.AddRange(lineMatches);
         }
 
-        private async UniTask SpawnTile(int x, int y)
+        private async UniTask<TileElementMono> SpawnTile(int x, int y)
         {
             var newTile = await _tileElementPool.GetElementFromPool();
             newTile.transform.position = new Vector2(x, y);
@@ -264,6 +267,7 @@ namespace Match3BaseMechanic.Grid
             newTile.transform.parent = _tileGridParent;
             newTile.gameObject.SetActive(true);
             _tiles[x, y] = newTile;
+            return newTile;
         }
 
         private void RemoveTile(TileElementMono tile)

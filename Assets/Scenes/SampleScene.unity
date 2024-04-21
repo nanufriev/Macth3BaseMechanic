@@ -414,7 +414,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a9d263ffaf4864a4b99a013451ed0d43, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _config: {fileID: 11400000, guid: 5e5177397e60a489c8475e5431406123, type: 2}
+  _gameConfig: {fileID: 11400000, guid: 5e5177397e60a489c8475e5431406123, type: 2}
+  _animationConfig: {fileID: 11400000, guid: 8e2e7ecc26d314da2b8ab9fe01038f43, type: 2}
   _tileElementMonoPrefab: {fileID: 2539297394841685886, guid: 317b497c51cea4bf78cebaa90d7dfb15, type: 3}
   _tilePoolParent: {fileID: 87928544}
   _tileGridParent: {fileID: 765096234}

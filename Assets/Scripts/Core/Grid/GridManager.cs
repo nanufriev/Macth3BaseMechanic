@@ -1,7 +1,11 @@
 using System.Collections.Generic;
+using Core.AnimationSystem;
+using Core.AnimationSystem.Interfaces;
+using Core.AnimationSystem.Settings;
 using Core.Helpers;
 using Core.Settings;
 using Cysharp.Threading.Tasks;
+using DG.Tweening;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -13,17 +17,24 @@ namespace Core.Grid
         private readonly Transform _tileGridParent;
         private readonly TileElementMono _tileElementMonoPrefab;
         private readonly Transform _tilePoolParent;
-        private readonly TileElementPoolManager _tileElementPool;
+        private readonly TileElementPoolManagerMono _tileElementPool;
         private readonly GameObject _baseGridElement;
         private readonly Transform _baseGridParent;
         private readonly Camera _mainCamera;
+        private readonly AnimationConfig _animationConfig;
+        private readonly AnimationManager _animationManager;
 
+        private IAnimationSequence _currentAnimationSequence;
         private TileElementMono[,] _tiles;
         private TileElementMono _selectedTile;
         private HashSet<TileElementMono> _matchedTiles;
         private SortedSet<int> _columnsToUpdate;
         private SortedSet<int> _rowsToUpdate;
         private bool _isBoardProcessing;
+        private IAnimationBatch _fallBatch;
+        private IAnimationTask _animationTask;
+        private float _fallDuration;
+        private List<UniTask> _spawningTilesTask;
 
         public GridManager(
             GameConfig config,
@@ -32,7 +43,8 @@ namespace Core.Grid
             Transform tileGridParent,
             Transform baseGridParent,
             GameObject baseGridElement,
-            Camera mainCamera)
+            Camera mainCamera,
+            AnimationConfig animationConfig)
         {
             _config = config;
             _tileElementMonoPrefab = tileElementMonoPrefab;
@@ -41,7 +53,10 @@ namespace Core.Grid
             _baseGridParent = baseGridParent;
             _baseGridElement = baseGridElement;
             _mainCamera = mainCamera;
-            _tileElementPool = new TileElementPoolManager();
+            _animationConfig = animationConfig;
+            _animationManager = new AnimationManager(_animationConfig);
+
+            _tileElementPool = new TileElementPoolManagerMono();
             _matchedTiles = new HashSet<TileElementMono>();
             _columnsToUpdate = new SortedSet<int>();
             _rowsToUpdate = new SortedSet<int>();
@@ -70,7 +85,7 @@ namespace Core.Grid
             for (var x = 0; x < _config.GridWidth; x++)
             for (var y = 0; y < _config.GridHeight; y++)
             {
-                await SpawnTile(x, y);
+                await SpawnTile(x, y, x, y);
             }
         }
 
@@ -108,6 +123,7 @@ namespace Core.Grid
 
                 if (Mathf.Abs(tile1.PositionX - tile2.PositionX) + Mathf.Abs(tile1.PositionY - tile2.PositionY) == 1)
                 {
+                    _currentAnimationSequence = _animationManager.CreateSequence();
                     SwapTilePositions(tile1, tile2);
 
                     CheckAndCollectMatches(tile1);
@@ -125,6 +141,8 @@ namespace Core.Grid
                     {
                         SwapTilePositions(tile1, tile2);
                     }
+
+                    await _currentAnimationSequence.Execute();
                 }
             }
             finally
@@ -139,7 +157,12 @@ namespace Core.Grid
             foreach (var matchedTile in _matchedTiles)
             {
                 _tiles[matchedTile.PositionX, matchedTile.PositionY] = null;
-                RemoveTile(matchedTile);
+
+                if (_animationConfig.IsAnimationsEnabled)
+                    _currentAnimationSequence.AddAnimationElement(
+                        _animationManager.CreateAnimationAction(() => RemoveTile(matchedTile)));
+                else
+                    RemoveTile(matchedTile);
             }
         }
 
@@ -151,6 +174,9 @@ namespace Core.Grid
 
         private void TilesFall()
         {
+            if (_animationConfig.IsAnimationsEnabled)
+                _fallBatch = _animationManager.CreateBatch(true);
+
             for (var y = _rowsToUpdate.Min; y < _config.GridHeight; y++)
             {
                 foreach (var x in _columnsToUpdate)
@@ -161,7 +187,20 @@ namespace Core.Grid
                         {
                             if (_tiles[x, j] != null)
                             {
-                                _tiles[x, j].transform.position = new Vector2(x, y);
+                                if (_animationConfig.IsAnimationsEnabled)
+                                {
+                                    _fallDuration = (j - y) / _animationConfig.TilesFallSpeed;
+                                    _animationTask = _animationManager.CreateTweenAnimationTask(_tiles[x, j].transform,
+                                        new Vector3(x, j), new Vector3(x, y), _fallDuration,
+                                        false, Ease.InOutQuad);
+
+                                    _fallBatch.AddAnimationElement(_animationTask);
+                                }
+                                else
+                                {
+                                    _tiles[x, j].transform.position = new Vector2(x, y);
+                                }
+
                                 _tiles[x, y] = _tiles[x, j];
                                 _tiles[x, j] = null;
                                 _tiles[x, y].SetNewPositionIndex(x, y);
@@ -171,11 +210,17 @@ namespace Core.Grid
                     }
                 }
             }
+
+            if (_animationConfig.IsAnimationsEnabled)
+                _currentAnimationSequence.AddAnimationElement(_fallBatch);
         }
 
         private async UniTask SpawnNewTiles()
         {
-            var spawningTasks = new List<UniTask>();
+            if (_animationConfig.IsAnimationsEnabled)
+                _fallBatch = new AnimationBatch(true);
+            else
+                _spawningTilesTask = new List<UniTask>();
 
             for (var y = _rowsToUpdate.Min; y < _config.GridHeight; y++)
             {
@@ -183,17 +228,43 @@ namespace Core.Grid
                 {
                     if (_tiles[x, y] == null)
                     {
-                        spawningTasks.Add(SpawnTile(x, y));
+                        _fallDuration = CalculateFallDuration(y);
+                        
+                        if (_animationConfig.IsAnimationsEnabled)
+                        {
+                            _fallBatch.AddAnimationElement(_animationManager.CreateTweenAnimationTaskWithLazyTarget(
+                                SpawnTile(x, y, x, _config.GridHeight), new Vector3(x, _config.GridHeight),
+                                new Vector3(x, y), _fallDuration, false, Ease.InOutQuad));
+                        }
+                        else
+                        {
+                            _spawningTilesTask.Add(SpawnTile(x, y, x, y));
+                        }
                     }
+                }
+                
+                if (_animationConfig.IsAnimationsEnabled && !_fallBatch.IsEmpty())
+                {
+                    _currentAnimationSequence.AddAnimationElement(_fallBatch);
+                    _fallBatch.AddAnimationElement(
+                        _animationManager.CreateAnimationDelay(1 / _animationConfig.TilesFallSpeed));
+                    _fallBatch = new AnimationBatch(true);
                 }
             }
 
-            await UniTask.WhenAll(spawningTasks);
+            if (!_animationConfig.IsAnimationsEnabled)
+                await UniTask.WhenAll(_spawningTilesTask);
         }
 
         private void SwapTilePositions(TileElementMono tile1, TileElementMono tile2)
         {
-            (tile1.transform.position, tile2.transform.position) = (tile2.transform.position, tile1.transform.position);
+            if (_animationConfig.IsAnimationsEnabled)
+                _currentAnimationSequence.AddAnimationElement(
+                    _animationManager.CreateTilesSwapBatch(tile1.transform, tile2.transform, tile1.PositionX,
+                        tile1.PositionY, tile2.PositionX, tile2.PositionY));
+            else
+                (tile1.transform.position, tile2.transform.position) =
+                    (tile2.transform.position, tile1.transform.position);
 
             _tiles[tile1.PositionX, tile1.PositionY] = tile2;
             _tiles[tile2.PositionX, tile2.PositionY] = tile1;
@@ -251,17 +322,17 @@ namespace Core.Grid
             }
         }
 
-        private async UniTask<TileElementMono> SpawnTile(int x, int y)
+        private async UniTask<Transform> SpawnTile(int x, int y, int spawnX, int spawnY)
         {
             var newTile = await _tileElementPool.GetElementFromPool();
-            newTile.transform.position = new Vector2(x, y);
+            newTile.transform.position = new Vector2(spawnX, spawnY);
             newTile.Init(x, y, GetRandomColor(), _mainCamera);
             newTile.OnTileClick += SelectTile;
             newTile.OnTileSwap += SwipeTile;
             newTile.transform.parent = _tileGridParent;
             newTile.gameObject.SetActive(true);
             _tiles[x, y] = newTile;
-            return newTile;
+            return newTile.transform;
         }
 
         private void RemoveTile(TileElementMono tile)
@@ -269,6 +340,11 @@ namespace Core.Grid
             tile.OnTileClick -= SelectTile;
             tile.OnTileSwap -= SwipeTile;
             _tileElementPool.ReturnToPool(tile);
+        }
+        
+        private float CalculateFallDuration(int y)
+        {
+            return (_config.GridHeight - y) / _animationConfig.TilesFallSpeed;
         }
 
         private Color GetRandomColor()

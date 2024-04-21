@@ -1,4 +1,5 @@
 using System;
+using Core.AnimationSystem.Settings;
 using Core.CameraManagement;
 using Core.Grid;
 using Core.Settings;
@@ -9,7 +10,9 @@ public class GameController : MonoBehaviour
 {
     [Header("Config")]
     [SerializeField]
-    private GameConfig _config;
+    private GameConfig _gameConfig;
+    [SerializeField]
+    private AnimationConfig _animationConfig;
     
     [Header("Tile Pool")]
     [SerializeField]
@@ -39,11 +42,11 @@ public class GameController : MonoBehaviour
             throw new Exception("Couldn't find main camera!");
 
         _cameraManager = new CameraManager(_mainCamera);
-        _gridManager = new GridManager(_config, _tileElementMonoPrefab, _tilePoolParent, 
-            _tileGridParent, _baseGridParent, _baseGridElement, _mainCamera);
+        _gridManager = new GridManager(_gameConfig, _tileElementMonoPrefab, _tilePoolParent, 
+            _tileGridParent, _baseGridParent, _baseGridElement, _mainCamera, _animationConfig);
         
         await _gridManager.Init();
-        _cameraManager.AdjustCameraToGrid(_config.GridWidth, _config.GridHeight);
+        _cameraManager.AdjustCameraToGrid(_gameConfig.GridWidth, _gameConfig.GridHeight);
         
     }
 }

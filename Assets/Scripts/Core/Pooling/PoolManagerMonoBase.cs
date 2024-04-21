@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Core.Pooling
 {
-    public abstract class PoolManagerBase<T> where T : MonoBehaviour, IPoolElement
+    public abstract class PoolManagerMonoBase<T> : IPoolManager<T> where T : MonoBehaviour, IPoolElement
     {
         private Transform _poolParent;
         private Queue<T> _poolElements;

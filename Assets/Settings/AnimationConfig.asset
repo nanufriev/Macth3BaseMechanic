@@ -14,6 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _isAnimationsEnabled: 1
   _swapAnimDuration: 0.25
-  _delayAfterTilesDestroy: 0.25
-  _tilesFallSpeed: 6
-  _newTilesFallSpeed: 6
+  _tilesFallSpeed: 8

@@ -9,7 +9,7 @@ namespace Core.AnimationSystem.Settings
         private bool _isAnimationsEnabled;
         [SerializeField] 
         private float _swapAnimDuration;
-        [SerializeField] [Tooltip("Tiles per second")]
+        [SerializeField]
         private float _tilesFallSpeed;
 
         public float TilesFallSpeed => _tilesFallSpeed;

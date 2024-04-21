@@ -228,26 +228,21 @@ namespace Core.Grid
                 {
                     if (_tiles[x, y] == null)
                     {
-                        _fallDuration = CalculateFallDuration(y);
-                        
+                        var spawnPosition = new Vector3(x,  _config.GridHeight, 0);
+                        var targetPosition = new Vector3(x, y, 0);
+                        var fallDuration = CalculateFallDuration( _config.GridHeight - y);
+
                         if (_animationConfig.IsAnimationsEnabled)
-                        {
                             _fallBatch.AddAnimationElement(_animationManager.CreateTweenAnimationTaskWithLazyTarget(
-                                SpawnTile(x, y, x, _config.GridHeight), new Vector3(x, _config.GridHeight),
-                                new Vector3(x, y), _fallDuration, false, Ease.InOutQuad));
-                        }
+                                SpawnTile(x, y, x,  _config.GridHeight), spawnPosition, targetPosition, fallDuration, false, Ease.InOutQuad));
                         else
-                        {
-                            _spawningTilesTask.Add(SpawnTile(x, y, x, y));
-                        }
+                            _spawningTilesTask.Add(SpawnTile(x, y, x,  _config.GridHeight));
                     }
                 }
-                
+
                 if (_animationConfig.IsAnimationsEnabled && !_fallBatch.IsEmpty())
                 {
                     _currentAnimationSequence.AddAnimationElement(_fallBatch);
-                    _fallBatch.AddAnimationElement(
-                        _animationManager.CreateAnimationDelay(1 / _animationConfig.TilesFallSpeed));
                     _fallBatch = new AnimationBatch(true);
                 }
             }
@@ -255,6 +250,7 @@ namespace Core.Grid
             if (!_animationConfig.IsAnimationsEnabled)
                 await UniTask.WhenAll(_spawningTilesTask);
         }
+
 
         private void SwapTilePositions(TileElementMono tile1, TileElementMono tile2)
         {

@@ -11,9 +11,12 @@ namespace Core.AnimationSystem.Settings
         private float _swapAnimDuration;
         [SerializeField]
         private float _tilesFallSpeed;
-
+        [SerializeField]
+        private float _delayAfterRefill;
+        
         public float TilesFallSpeed => _tilesFallSpeed;
         public float SwapAnimDuration => _swapAnimDuration;
         public bool IsAnimationsEnabled => _isAnimationsEnabled;
+        public float DelayAfterRefill => _delayAfterRefill;
     }
 }

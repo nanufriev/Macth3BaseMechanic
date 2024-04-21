@@ -12,11 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d7557e43d827340ef854dca9265c8703, type: 3}
   m_Name: GameConfig
   m_EditorClassIdentifier: 
-  _gridWidth: 10
-  _gridHeight: 10
+  _gridWidth: 4
+  _gridHeight: 4
   _tileColors:
   - {r: 0, g: 1, b: 0, a: 1}
   - {r: 1, g: 0, b: 0, a: 1}
   - {r: 0, g: 0, b: 1, a: 1}
   - {r: 1, g: 1, b: 0, a: 1}
   - {r: 0.9963193, g: 0, b: 1, a: 1}
+  _maximumReshuffleAmount: 10

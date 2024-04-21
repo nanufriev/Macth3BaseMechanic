@@ -12,9 +12,12 @@ namespace Core.Settings
         private int _gridHeight;
         [SerializeField] 
         private List<Color> _tileColors;
+        [SerializeField] 
+        private int _maximumReshuffleAmount = 10;
 
         public int GridWidth => _gridWidth;
         public int GridHeight => _gridHeight;
+        public int MaximumReshuffleAmount => _maximumReshuffleAmount;
         public List<Color> TileColors => _tileColors;
     }
 }

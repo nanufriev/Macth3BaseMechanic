@@ -15,3 +15,4 @@ MonoBehaviour:
   _isAnimationsEnabled: 1
   _swapAnimDuration: 0.25
   _tilesFallSpeed: 8
+  _delayAfterRefill: 0.5

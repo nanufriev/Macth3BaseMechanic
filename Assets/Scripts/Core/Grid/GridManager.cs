@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Core.AnimationSystem;
 using Core.AnimationSystem.Interfaces;
@@ -35,6 +36,7 @@ namespace Core.Grid
         private IAnimationTask _animationTask;
         private float _fallDuration;
         private List<UniTask> _spawningTilesTask;
+        private int _reshuffleAmount;
 
         public GridManager(
             GameConfig config,
@@ -67,6 +69,7 @@ namespace Core.Grid
             var poolSize = _config.GridWidth * _config.GridWidth + _config.GridWidth * 2;
             await _tileElementPool.InitPool(poolSize, _tilePoolParent, _tileElementMonoPrefab);
             await UniTask.WhenAll(CreateBaseGrid(), CreateGrid());
+            CheckMoves();
         }
 
         private async UniTask CreateBaseGrid()
@@ -143,6 +146,7 @@ namespace Core.Grid
                     }
 
                     await _currentAnimationSequence.Execute();
+                    CheckMoves();
                 }
             }
             finally
@@ -189,7 +193,7 @@ namespace Core.Grid
                             {
                                 if (_animationConfig.IsAnimationsEnabled)
                                 {
-                                    _fallDuration = (j - y) / _animationConfig.TilesFallSpeed;
+                                    _fallDuration = CalculateFallDuration(y);
                                     _animationTask = _animationManager.CreateTweenAnimationTask(_tiles[x, j].transform,
                                         new Vector3(x, j), new Vector3(x, y), _fallDuration,
                                         false, Ease.InOutQuad);
@@ -222,21 +226,23 @@ namespace Core.Grid
             else
                 _spawningTilesTask = new List<UniTask>();
 
+            var maxFallDuration = 0f;
             for (var y = _rowsToUpdate.Min; y < _config.GridHeight; y++)
             {
                 foreach (var x in _columnsToUpdate)
                 {
                     if (_tiles[x, y] == null)
                     {
-                        var spawnPosition = new Vector3(x,  _config.GridHeight, 0);
+                        var spawnPosition = new Vector3(x, _config.GridHeight, 0);
                         var targetPosition = new Vector3(x, y, 0);
-                        var fallDuration = CalculateFallDuration( _config.GridHeight - y);
-
+                        var fallDuration = CalculateFallDuration(_config.GridHeight - y);
+                        maxFallDuration = Math.Max(fallDuration, maxFallDuration);
                         if (_animationConfig.IsAnimationsEnabled)
                             _fallBatch.AddAnimationElement(_animationManager.CreateTweenAnimationTaskWithLazyTarget(
-                                SpawnTile(x, y, x,  _config.GridHeight), spawnPosition, targetPosition, fallDuration, false, Ease.InOutQuad));
+                                SpawnTile(x, y, x, _config.GridHeight), spawnPosition, targetPosition, fallDuration,
+                                false, Ease.InOutQuad));
                         else
-                            _spawningTilesTask.Add(SpawnTile(x, y, x,  _config.GridHeight));
+                            _spawningTilesTask.Add(SpawnTile(x, y, x, _config.GridHeight));
                     }
                 }
 
@@ -247,7 +253,10 @@ namespace Core.Grid
                 }
             }
 
-            if (!_animationConfig.IsAnimationsEnabled)
+            if (_animationConfig.IsAnimationsEnabled)
+                _currentAnimationSequence.AddAnimationElement(
+                    _animationManager.CreateAnimationDelay(maxFallDuration + _animationConfig.DelayAfterRefill));
+            else
                 await UniTask.WhenAll(_spawningTilesTask);
         }
 
@@ -318,6 +327,107 @@ namespace Core.Grid
             }
         }
 
+        private void CheckMoves()
+        {
+            _reshuffleAmount = 0;
+            while (!IsMoveAvailable() && _reshuffleAmount < _config.MaximumReshuffleAmount)
+            {
+                ReshuffleBoard();
+                _reshuffleAmount++;
+            }
+
+            if (_reshuffleAmount >= _config.MaximumReshuffleAmount)
+                throw new Exception("Maximum number of reshuffle attempts exceeded!");
+        }
+
+        private bool IsMoveAvailable()
+        {
+            for (var y = 0; y < _config.GridHeight; y++)
+            {
+                for (var x = 0; x < _config.GridWidth; x++)
+                {
+                    var currentColor = _tiles[x, y].Color;
+
+                    if (x < _config.GridWidth - 2)
+                    {
+                        if (_tiles[x + 1, y].Color == currentColor && _tiles[x + 2, y].Color == currentColor)
+                            return true;
+                    }
+
+                    if (x > 0 && x < _config.GridWidth - 1)
+                    {
+                        if (_tiles[x - 1, y].Color == currentColor && _tiles[x + 1, y].Color == currentColor)
+                            return true;
+                    }
+
+                    if (y < _config.GridHeight - 2)
+                    {
+                        if (_tiles[x, y + 1].Color == currentColor && _tiles[x, y + 2].Color == currentColor)
+                            return true;
+                    }
+
+                    if (y > 0 && y < _config.GridHeight - 1)
+                    {
+                        if (_tiles[x, y - 1].Color == currentColor && _tiles[x, y + 1].Color == currentColor)
+                            return true;
+                    }
+
+                    if (x > 0 && x < _config.GridWidth - 2)
+                    {
+                        if (_tiles[x - 1, y].Color == currentColor && _tiles[x + 2, y].Color == currentColor)
+                            return true;
+                    }
+
+                    if (y > 0 && y < _config.GridHeight - 2)
+                    {
+                        if (_tiles[x, y - 1].Color == currentColor && _tiles[x, y + 2].Color == currentColor)
+                            return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private void ReshuffleBoard()
+        {
+            Debug.LogError("RE");
+            var tiles = new List<TileElementMono>(_config.GridWidth * _config.GridHeight);
+            for (int y = 0; y < _config.GridHeight; y++)
+            {
+                for (var x = 0; x < _config.GridWidth; x++)
+                {
+                    tiles.Add(_tiles[x, y]);
+                }
+            }
+
+            ShuffleTiles(tiles);
+
+            var index = 0;
+            for (var y = 0; y < _config.GridHeight; y++)
+            {
+                for (var x = 0; x < _config.GridWidth; x++)
+                {
+                    _tiles[x, y] = tiles[index++];
+                    _tiles[x, y].SetNewPositionIndex(x, y);
+                    _tiles[x, y].transform.position = new Vector3(x, y);
+                }
+            }
+        }
+
+        private void ShuffleTiles(List<TileElementMono> tiles)
+        {
+            var rnd = new System.Random();
+            var n = tiles.Count;
+            while (n > 1)
+            {
+                n--;
+                var k = rnd.Next(n + 1);
+                (tiles[k], tiles[n]) = (tiles[n], tiles[k]);
+            }
+        }
+
+
         private async UniTask<Transform> SpawnTile(int x, int y, int spawnX, int spawnY)
         {
             var newTile = await _tileElementPool.GetElementFromPool();
@@ -337,7 +447,7 @@ namespace Core.Grid
             tile.OnTileSwap -= SwipeTile;
             _tileElementPool.ReturnToPool(tile);
         }
-        
+
         private float CalculateFallDuration(int y)
         {
             return (_config.GridHeight - y) / _animationConfig.TilesFallSpeed;

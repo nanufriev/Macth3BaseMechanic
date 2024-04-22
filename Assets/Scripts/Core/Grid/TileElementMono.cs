@@ -10,6 +10,10 @@ namespace Core.Grid
         
         public event Action<TileElementMono> OnTileClick;
         public event Action<TileElementMono, Vector3> OnTileSwap;
+
+        [SerializeField]
+        private GameObject _selectFrame;
+        
         public int PositionX { get; private set; } = -1;
         public int PositionY { get; private set; } = -1;
         public Color Color { get; private set; }
@@ -24,6 +28,7 @@ namespace Core.Grid
             PositionY = y;
             Color = color;
             _mainCamera = mainCamera;
+            _selectFrame.SetActive(false);
             _spriteRenderer = GetComponent<SpriteRenderer>();
             
             if (_spriteRenderer == null)
@@ -37,7 +42,17 @@ namespace Core.Grid
             PositionX = x;
             PositionY = y;
         }
+
+        public void Select()
+        {
+            _selectFrame.SetActive(true);
+        }
     
+        public void Deselect()
+        {
+            _selectFrame.SetActive(false);
+        }
+        
         private void OnMouseDown() 
         {
             //TODO Need to have Input manager and handle input only from pc, but from mobile devices too

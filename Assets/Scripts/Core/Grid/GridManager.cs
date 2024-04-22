@@ -134,9 +134,20 @@ namespace Core.Grid
                 return;
 
             if (_selectedTile == null || _selectedTile.Equals(tile))
+            {
                 _selectedTile = tile;
+                _selectedTile.Select();
+            }
+            else if (!AreTilesAdjacent(_selectedTile, tile))
+            {
+                _selectedTile.Deselect();
+                _selectedTile = tile;
+                _selectedTile.Select();
+            }
             else
+            {
                 SwapTiles(_selectedTile, tile).Forget();
+            }
         }
 
         private void SwipeTile(TileElementMono tile, Vector3 direction)
@@ -160,7 +171,7 @@ namespace Core.Grid
             {
                 _isBoardProcessing = true;
 
-                if (Mathf.Abs(tile1.PositionX - tile2.PositionX) + Mathf.Abs(tile1.PositionY - tile2.PositionY) == 1)
+                if (AreTilesAdjacent(tile1, tile2))
                 {
                     _currentAnimationSequence = _animationManager.CreateSequence();
                     SwapTilePositions(tile1, tile2);
@@ -189,7 +200,12 @@ namespace Core.Grid
             }
             finally
             {
-                _selectedTile = null;
+                if (_selectedTile != null)
+                {
+                    _selectedTile.Deselect();
+                    _selectedTile = null;
+                }
+
                 _isBoardProcessing = false;
             }
         }
@@ -511,6 +527,11 @@ namespace Core.Grid
 
             var (selectedX, selectedY) = possiblePositions[Random.Range(0, possiblePositions.Count)];
             return _tiles[selectedX, selectedY];
+        }
+
+        private bool AreTilesAdjacent(TileElementMono tile1, TileElementMono tile2)
+        {
+            return Mathf.Abs(tile1.PositionX - tile2.PositionX) + Mathf.Abs(tile1.PositionY - tile2.PositionY) == 1;
         }
 
         private Color GetRandomColor()

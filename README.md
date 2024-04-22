@@ -15,7 +15,7 @@ Utilizes `GameConfig` and `AnimationConfig` to adjust gameplay mechanics like gr
 Manages game logic and animations separately, facilitating non-graphical simulations for testing and AI development.
 
 ### Dynamic Grid Management
-Controls tile spawning, swapping, and matching logic, which can be customized via `GameConfig`, supporting easy customization of gameplay dynamics.
+Controls tile spawning, swapping, and matching logic, which can be customized via `GameConfig`, supporting easy customization of gameplay dynamics. Tiles can be swapped by simple swipe gestures or clicks, enhancing player interaction and control.
 
 ### Responsive Design
 Features adaptive camera and UI adjustments to accommodate different screen sizes and resolutions.

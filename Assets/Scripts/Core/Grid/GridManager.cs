@@ -14,6 +14,10 @@ namespace Core.Grid
 {
     public class GridManager
     {
+        public event Action OnCorrectSwipe;
+        public event Action OnIncorrectSwipe;
+        public event Action OnShuffle;
+        
         private readonly GameConfig _config;
         private readonly Transform _tileGridParent;
         private readonly TileElementMono _tileElementMonoPrefab;
@@ -32,12 +36,14 @@ namespace Core.Grid
         private SortedSet<int> _columnsToUpdate;
         private SortedSet<int> _rowsToUpdate;
         private bool _isBoardProcessing;
+        private bool _isInputAllowed;
         private IAnimationBatch _fallBatch;
         private IAnimationTask _animationTask;
         private float _fallDuration;
         private List<UniTask> _spawningTilesTask;
         private int _reshuffleAmount;
-
+        private bool _isAnimationsEnabled;
+        
         public GridManager(
             GameConfig config,
             TileElementMono tileElementMonoPrefab,
@@ -72,6 +78,36 @@ namespace Core.Grid
             CheckMoves();
         }
 
+        public async UniTask TrySwapRandomTiles()
+        {
+            var x = Random.Range(0, _config.GridWidth);
+            var y = Random.Range(0, _config.GridHeight);
+            var tile1 = _tiles[x, y];
+            var tile2 = GetRandomAdjacentTile(x, y);
+
+            await SwapTiles(tile1, tile2);
+        }
+        
+        public void TurnOnAnimations()
+        {
+            _isAnimationsEnabled = true;
+        }
+        
+        public void TurnOffAnimations()
+        {
+            _isAnimationsEnabled = false;
+        }
+        
+        public void TurnOnInput()
+        {
+            _isInputAllowed = true;
+        }
+        
+        public void TurnOffInput()
+        {
+            _isInputAllowed = false;
+        }
+        
         private async UniTask CreateBaseGrid()
         {
             for (var x = 0; x < _config.GridWidth; x++)
@@ -94,7 +130,7 @@ namespace Core.Grid
 
         private void SelectTile(TileElementMono tile)
         {
-            if (_isBoardProcessing)
+            if (_isBoardProcessing || !_isInputAllowed)
                 return;
 
             if (_selectedTile == null || _selectedTile.Equals(tile))
@@ -105,7 +141,7 @@ namespace Core.Grid
 
         private void SwipeTile(TileElementMono tile, Vector3 direction)
         {
-            if (_isBoardProcessing)
+            if (_isBoardProcessing || !_isInputAllowed)
                 return;
 
             var targetX = tile.PositionX + (int)direction.x;
@@ -139,10 +175,12 @@ namespace Core.Grid
                         _matchedTiles.Clear();
                         _columnsToUpdate.Clear();
                         _rowsToUpdate.Clear();
+                        OnCorrectSwipe?.Invoke();
                     }
                     else
                     {
                         SwapTilePositions(tile1, tile2);
+                        OnIncorrectSwipe?.Invoke();
                     }
 
                     await _currentAnimationSequence.Execute();
@@ -162,7 +200,7 @@ namespace Core.Grid
             {
                 _tiles[matchedTile.PositionX, matchedTile.PositionY] = null;
 
-                if (_animationConfig.IsAnimationsEnabled)
+                if (_isAnimationsEnabled)
                     _currentAnimationSequence.AddAnimationElement(
                         _animationManager.CreateAnimationAction(() => RemoveTile(matchedTile)));
                 else
@@ -178,7 +216,7 @@ namespace Core.Grid
 
         private void TilesFall()
         {
-            if (_animationConfig.IsAnimationsEnabled)
+            if (_isAnimationsEnabled)
                 _fallBatch = _animationManager.CreateBatch(true);
 
             for (var y = _rowsToUpdate.Min; y < _config.GridHeight; y++)
@@ -191,7 +229,7 @@ namespace Core.Grid
                         {
                             if (_tiles[x, j] != null)
                             {
-                                if (_animationConfig.IsAnimationsEnabled)
+                                if (_isAnimationsEnabled)
                                 {
                                     _fallDuration = CalculateFallDuration(y);
                                     _animationTask = _animationManager.CreateTweenAnimationTask(_tiles[x, j].transform,
@@ -215,13 +253,13 @@ namespace Core.Grid
                 }
             }
 
-            if (_animationConfig.IsAnimationsEnabled)
+            if (_isAnimationsEnabled)
                 _currentAnimationSequence.AddAnimationElement(_fallBatch);
         }
 
         private async UniTask SpawnNewTiles()
         {
-            if (_animationConfig.IsAnimationsEnabled)
+            if (_isAnimationsEnabled)
                 _fallBatch = new AnimationBatch(true);
             else
                 _spawningTilesTask = new List<UniTask>();
@@ -237,23 +275,23 @@ namespace Core.Grid
                         var targetPosition = new Vector3(x, y, 0);
                         var fallDuration = CalculateFallDuration(_config.GridHeight - y);
                         maxFallDuration = Math.Max(fallDuration, maxFallDuration);
-                        if (_animationConfig.IsAnimationsEnabled)
+                        if (_isAnimationsEnabled)
                             _fallBatch.AddAnimationElement(_animationManager.CreateTweenAnimationTaskWithLazyTarget(
                                 SpawnTile(x, y, x, _config.GridHeight), spawnPosition, targetPosition, fallDuration,
                                 false, Ease.InOutQuad));
                         else
-                            _spawningTilesTask.Add(SpawnTile(x, y, x, _config.GridHeight));
+                            _spawningTilesTask.Add(SpawnTile(x, y, x, y));
                     }
                 }
 
-                if (_animationConfig.IsAnimationsEnabled && !_fallBatch.IsEmpty())
+                if (_isAnimationsEnabled && !_fallBatch.IsEmpty())
                 {
                     _currentAnimationSequence.AddAnimationElement(_fallBatch);
                     _fallBatch = new AnimationBatch(true);
                 }
             }
 
-            if (_animationConfig.IsAnimationsEnabled)
+            if (_isAnimationsEnabled)
                 _currentAnimationSequence.AddAnimationElement(
                     _animationManager.CreateAnimationDelay(maxFallDuration + _animationConfig.DelayAfterRefill));
             else
@@ -263,7 +301,7 @@ namespace Core.Grid
 
         private void SwapTilePositions(TileElementMono tile1, TileElementMono tile2)
         {
-            if (_animationConfig.IsAnimationsEnabled)
+            if (_isAnimationsEnabled)
                 _currentAnimationSequence.AddAnimationElement(
                     _animationManager.CreateTilesSwapBatch(tile1.transform, tile2.transform, tile1.PositionX,
                         tile1.PositionY, tile2.PositionX, tile2.PositionY));
@@ -334,6 +372,7 @@ namespace Core.Grid
             {
                 ReshuffleBoard();
                 _reshuffleAmount++;
+                OnShuffle?.Invoke();
             }
 
             if (_reshuffleAmount >= _config.MaximumReshuffleAmount)
@@ -391,7 +430,6 @@ namespace Core.Grid
 
         private void ReshuffleBoard()
         {
-            Debug.LogError("RE");
             var tiles = new List<TileElementMono>(_config.GridWidth * _config.GridHeight);
             for (int y = 0; y < _config.GridHeight; y++)
             {
@@ -427,7 +465,6 @@ namespace Core.Grid
             }
         }
 
-
         private async UniTask<Transform> SpawnTile(int x, int y, int spawnX, int spawnY)
         {
             var newTile = await _tileElementPool.GetElementFromPool();
@@ -451,6 +488,29 @@ namespace Core.Grid
         private float CalculateFallDuration(int y)
         {
             return (_config.GridHeight - y) / _animationConfig.TilesFallSpeed;
+        }
+        
+        private TileElementMono GetRandomAdjacentTile(int x, int y)
+        {
+            var possiblePositions = new List<(int, int)>();
+
+            if (x > 0)
+                possiblePositions.Add((x - 1, y));
+    
+            if (x < _config.GridWidth - 1)
+                possiblePositions.Add((x + 1, y));
+
+            if (y > 0)
+                possiblePositions.Add((x, y - 1));
+
+            if (y < _config.GridHeight - 1)
+                possiblePositions.Add((x, y + 1));
+
+            if (possiblePositions.Count == 0)
+                return null;
+
+            var (selectedX, selectedY) = possiblePositions[Random.Range(0, possiblePositions.Count)];
+            return _tiles[selectedX, selectedY];
         }
 
         private Color GetRandomColor()
